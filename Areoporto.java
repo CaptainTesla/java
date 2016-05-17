@@ -94,7 +94,7 @@ public class TorreDiControlloSemP extends TorreDiControllo
 	mutex.p();
 
 	// se non trovo A libero o aerei che vogliono atterrare devo attendere
-	if ( postiLiberiA == 0 || aereiInAtterraggio != 0 ) {
+	if ( postiLiberiA == 0 || codaAtterraggio > 0 ) {
 	    codaDecolloA++;
 	    mutex.v();
 	    attesaA.p();
@@ -140,7 +140,9 @@ public class TorreDiControlloSemP extends TorreDiControllo
 	// garantisco che in B c'e' la pista libera (automaticamente verificata)
 	if ( postiLiberiB > 0)
 	    attesaB.v();
-	
+	// se ci sono atterraggi in vista li permetto
+	if ( codaAtterraggio > 0)
+	    attesaAtterraggio.v();
 	// garantisco che in A non ci siano aerei che vogliano atterrare e che ci siano posti liberi
 	if ( postiLiberiA > 0 && aereiInAtterraggio == 0)
 	    attesaA.v();
@@ -208,6 +210,119 @@ public class TorreDiControlloSemP extends TorreDiControllo
 
 public class TorreDiControlloHor extends TorreDiControllo
 {
-    private Monitor torre = new Monitor;
+    private Monitor torre = new Monitor();
+    torre.attesaA = new Condition ();
+    torre.attesaB = new Condition();
+    torre.attesaAtterraggio = new Condition();
+
+    public void richAccessoPista(int IO)
+    {
+	torre.mEnter();
+
+	// se non ho posti liberi in A o se trovo aerei che vogliono atterrare aspetto
+	if ( postiLiberiA == 0 || codaAtterraggio > 0 ) {
+	    codadecolloa++;
+	    torre.attesaa.cwait();
+	}
+	// mi tolgo dall'attesa 
+	codadecolloa--;
+	// ed occupo un posto in A
+	postiLiberiA--;
+
+	torre.mExit();
+	return;
+    }
     
+    public void richautorizdecollo(int IO)
+    {
+	torre.mEnter();
+
+	// la condizione di aerei che non possono atterare e' gia' verificata in A
+	if ( postiLiberiB == 0 ) {
+	    codaDecolloB++;
+	    torre.attesaB.cWait();
+	}
+
+	// lascio la coda
+	codaDecolloB--;
+	// entro in B e libero un posto in A
+	postiLiberiA--;
+	postiLiberiB++;
+	
+	torre.mExit();
+	return;
+    }
+    
+    public void inVolo(int IO)
+    {
+	torre.mEnter();
+
+	// lascio B
+	postiLiberiB--;
+	// se ci sono aerei che vogliono decollare in B lo permetto
+	if ( codaDecolloB > 0 )
+	    torre.attesaB.cSignal();
+	// una volta liberata tutta la pista verifico la presenza di atterraggi
+	if ( codaAtterraggio > 0 )
+	    torre.attesaAtterraggio.cSignal();
+	// altrimenti se ci sono aerei in attesa per il decollo in A e non ci sono atterraggi
+	if ( codaDecolloA > 0 /* && codaAtterraggio > 0 */ ) 
+	    torre.attesaA.cSignal();
+
+	// sono a posto
+	torre.mExit();
+	return;
+    }
+    
+    public void richAutorizAtterraggio(int IO)
+    {
+	torre.mEnter();
+
+	// verifico di avere la pista libera altrimenti aspetto
+	if ( postiLiberiA == 0 || postiLiberiB == 0 ) {
+	    codaAtterraggio++;
+	    torre.attesaAtterraggio.cWait();
+	}
+	// entro in atterraggio
+	atterraggiInCorso++;
+	// occupo prima di tutto la zona A interamente
+	postiLiberiA = 0;
+
+	torre.mExit();
+	return;
+    }
+    
+    public void freniAttivati(int IO)
+    {
+	torre.mEnter();
+
+	// libero la zona A completamente
+	postiLiberiA = 2;
+	// occupando interamente la zona B
+	postiLiberiB = 0;
+
+	torre.mExit();
+	return;
+
+    }
+    
+    public void inParcheggio(int IO)
+    {
+	torre.mEnter();
+
+	// libero completamente B
+	postiLiberiB = 2;
+	// ho concluso l'atterraggio
+	atterraggiInCorso--;
+	// verifico la presenza di ulteriori atterraggi
+	if ( codaAtterraggio > 0 )
+	    torre.attesaAtterraggio.cSignal();
+	// se ci sono attese in A le abilito
+	if ( codaDecolloA > 0 )
+	    torre.attesaA.cSignal();
+	
+	// altrimenti sono nelle condizioni iniziali
+	torre.mExit();
+	return;
+    }
 }
