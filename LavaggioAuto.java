@@ -176,4 +176,4 @@ public class LavaggioAutoSemp extends LavaggioAuto
 	return;
     }
     
-}
+} // LavaggioAutoSemP
