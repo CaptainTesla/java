@@ -93,9 +93,10 @@ public class TorreDiControlloSemP extends TorreDiControllo
     {
 	mutex.p();
 
+	// desidero la pista 
+	codaDecolloA++;
 	// se non trovo A libero o aerei che vogliono atterrare devo attendere
 	if ( postiLiberiA == 0 || codaAtterraggio > 0 ) {
-	    codaDecolloA++;
 	    mutex.v();
 	    attesaA.p();
 	}
@@ -111,10 +112,11 @@ public class TorreDiControlloSemP extends TorreDiControllo
     {
 	mutex.p();
 
+	// desidero decollare
+	codaDecolloB++;
 	// se non trovo posti in B aspetto
 	// non devo verificare che ci siano aeri che stanno atterrando visto che era una condizione necessaria per A
 	if ( postiLiberiB == 0 ) {
-	    codaDecolloB++;
 	    mutex.v();
 	    attesaB.p();
 	}
@@ -156,9 +158,10 @@ public class TorreDiControlloSemP extends TorreDiControllo
     {
 	mutex.p();
 
+	// mi accodo per l'atterraggio
+	codaAtterraggio++;
 	// se non ho tutta la pista libera attendo
-	if ( postiLiberiA < 2 or postiLiberi < 2 or atterraggiInCorso != 0 ) {
-	    codaAtterraggio++;
+	if ( postiLiberiA < 2 || postiLiberi < 2 || atterraggiInCorso != 0 ) {
 	    mutex.v();
 	    attesaAtterraggio.p();
 	}
@@ -219,9 +222,10 @@ public class TorreDiControlloHor extends TorreDiControllo
     {
 	torre.mEnter();
 
+	// mi accodo per la pista
+	codadecolloa++;
 	// se non ho posti liberi in A o se trovo aerei che vogliono atterrare aspetto
 	if ( postiLiberiA == 0 || codaAtterraggio > 0 ) {
-	    codadecolloa++;
 	    torre.attesaa.cwait();
 	}
 	// mi tolgo dall'attesa 
@@ -237,9 +241,10 @@ public class TorreDiControlloHor extends TorreDiControllo
     {
 	torre.mEnter();
 
+	// richiedo accesso in B
+	codaDecolloB++;
 	// la condizione di aerei che non possono atterare e' gia' verificata in A
 	if ( postiLiberiB == 0 ) {
-	    codaDecolloB++;
 	    torre.attesaB.cWait();
 	}
 
@@ -278,11 +283,14 @@ public class TorreDiControlloHor extends TorreDiControllo
     {
 	torre.mEnter();
 
+	// richiedo l'atterraggio
+	codaAtterraggio++;
 	// verifico di avere la pista libera altrimenti aspetto
 	if ( postiLiberiA == 0 || postiLiberiB == 0 ) {
-	    codaAtterraggio++;
 	    torre.attesaAtterraggio.cWait();
 	}
+	// esco dalla coda 
+	codaAtterraggio--;
 	// entro in atterraggio
 	atterraggiInCorso++;
 	// occupo prima di tutto la zona A interamente
@@ -325,4 +333,9 @@ public class TorreDiControlloHor extends TorreDiControllo
 	torre.mExit();
 	return;
     }
+}
+
+public class TorreDiControlloReg
+{
+    public Region zonaA 
 }
