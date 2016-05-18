@@ -1,8 +1,14 @@
 /*
-  per verificare la correttezza del codice:
-  ad ogni incremento di variabile deve corrispondere nel flusso di esecuzione un corrispondente 
-  decremento 
-  ps il codice purtroppo non e' una corrispondenza 1 a 1 con la rete di petri
+  $$$$$$$$  Linee guida generali, per evitare errori: $$$$$$$$$$$$$
+
+  1a ) ad ogni incremento di variabile condivisa deve corrispondere nel flusso di esecuzione un
+  corrispondente decremento
+
+  1b ) ad ogni incremento / decremento di una variabile condivisa si possono verificare condizioni
+  necessarie per la sincronizzazione, che vanno ovviamente controllate
+
+  2 ) il codice purtroppo non e' una corrispondenza 1 a 1 con la rete di petri
+
  */
 
 
@@ -61,6 +67,10 @@ public class TorreDiControlloSemp extends TorreDiControllo
 	// termino la richiesta ed entro in A
 	richiestaAccessoA--;
 	postiLiberiA--;
+	// ! ho appena soddisfatto una condizione necessaria per l'ingresso in A
+	// avendo a questo punto garantite l'assenza di atterraggi pendenti e in corso verifico:
+	if ( richiestaAccessoA > 0 )
+	    attesaA.signal();
 
 	mutex.v();
 	return;
@@ -164,4 +174,74 @@ public class TorreDiControlloSemp extends TorreDiControllo
 	mutex.v();
 	return;
     }
+
+    
+}
+    
+public class TorreDiControllo 
+{
+    private Region torre = new Region;
+    
+    public void richAccessoPista(int IO)
+    {
+	torre.enterWhen();
+	// inoltro la richiesta di acccesso in pista
+	richiestaAccessoA++;
+	torre.leave();
+
+	// accedo alla zona A quando:
+	// Non ho atterraggi pendenti, ho posti liberi e non ho atterraggi in corso
+	torre.enterWhen(new RegionCondition() {
+		public boolean evaluate() 
+		{ return atterraggioInCorso == 0 && postiLiberiA != 0 && richiesteAtterraggio == 0; }
+	    });
+
+	// termino la richiesta
+	richiestaAccessoA--;
+	// entro in A occupando un posto
+	postiLiberiA--;
+	
+	torre.leave();
+	return;
+		    
+    }
+    
+    public void richAutorizDecollo(int IO)
+    {
+	torre.enterWhen();
+	richiestaAccessoB++;
+	torre.leave();
+
+	torre.enterWhen( new RegionCondition() {
+		public boolean evaluate ()
+		{ return postiLiberiB != 0; }
+	    });
+	// termino la richiesta di accesso in B
+	richiestaAccessoB--;
+	// libero un posto in A
+	postiLiberiA++;
+	// e occupo un posto in B
+	postiLiberiB++;
+	
+	torre.leave();
+	return;
+    }
+    
+    public void inVolo(int IO)
+    {
+	torre.enterWhen();
+	
+	// lascio libero un posto in B
+	postiLiberiB++;
+	    
+	torre.leave();
+	return;
+    }
+    
+    public void richAutorizAtterraggio(int IO);
+    
+    public void freniAttivati(int IO);
+    
+    public void inParcheggio(int IO);
+
 }
