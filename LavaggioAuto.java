@@ -6,6 +6,11 @@ public abstract class LavaggioAuto
     public abstract void lavaInterno();
     public abstract void pagaTotale();
 
+    protected int postiLiberiA = 8;
+    protected int postiLiberiTotale = 4;
+    protected int richiesteA = 0;
+    protected int richiesteTotale = 0;
+
 }
 
 public class VeicoloParziale extends Thread
@@ -177,3 +182,128 @@ public class LavaggioAutoSemp extends LavaggioAuto
     }
     
 } // LavaggioAutoSemP
+
+
+public class LavaggioAutoHor
+{
+    private Monitor lavaggio = new Monitor();
+    private Condition attesaA = lavaggio.condition();
+    private Condition attesaTotale = lavaggio.condition();
+	
+    public abstract void prenotaParziale()
+    {
+	lavaggio.mEnter();
+	// richiedo l'accesso in A
+	richiesteA++;
+	
+	// condizioni per entrare in A
+	// posti liberi per il lavaggio parziale  non zero
+	// che non ci siano richieste per il lavaggio totale in attesa
+	if (postiLiberiA == 0 || richiesteTotale > 0) {
+	    attesaA.cWait();
+	}
+	// termino la richiesta all'entrata in A
+	richiesteA--;
+	// occupando un posto in A;
+	postiLiberiA--;
+
+	// possono sussistere: postiTotale != 0 && postiLiberiA != 0
+	if (postiLiberiA != 0 && postiLiberiTotale != 0 && richiesteTotale > 0)
+	    attesaTotale.cSignal();
+	// se non ho il problema di posti per il lavaggio totale verifico la presenza di quelli parziali
+	if (postiLiberiA != 0 && richiesteA > 0)
+	    attesaA.cSignal();
+
+	// sono a posto
+	mutex.mExit();
+	return;
+	
+    }
+    public abstract void pagaParziale()
+    {
+    	lavaggio.mEnter();
+
+	// libero un posto in A
+	postiLiberiA++;
+	// verifico se ci sono richieste per il lavaggio totale
+	if (richiesteTotale > 0 && postiTotale !=0)
+	    attesaTotale.cSignal()
+	// verifico se ci sono richeste per il parziale
+	if (richiesteA > 0)
+	    attesaA.cSignal();
+
+	// altrimenti sono a posto
+	lavaggio.mExit();
+	return;
+    }
+
+    public abstract void prenotaTotale()
+    {
+	lavaggio.mEnter();
+	
+	// richedo l'accesso totale all'autolavaggio A & B
+	richiesteTotale++;
+	// condizioni per l'entrata in A && B:
+	// che ci siano posti disponibili per il lavaggio totale
+	if (postiLiberiTotale == 0) {
+	    attesaTotale.cWait();
+	}
+	// termino la richiesta
+	richiesteTotale--;
+	// ho occupato un posto per il totale
+	postiLiberiTotale--;
+	// ho occupato un posto in A
+	postiLiberiA--;
+
+	// a questo punto potrebbero essere soddisfatte: postiliberiA != 0 && postiliberitotale != 0:
+	// condizioni necessarie per P&T
+	if (postiLiberiA != 0 && postiLiberiTotale != 0 && richiesteTotale > 0)
+	    attesaTotale.cSignal();
+	if (postiLiberiA != 0 && richiesteTotale == 0)
+	    attesaA.cSignal();
+
+	// C.I. :
+	lavaggio.mExit();
+	return;
+	
+    }
+
+    public abstract void lavaInterno()
+    {
+	lavaggio.mEnter();
+	
+	// l'accesso alla zona B e' garantito: libero un posto in A
+	postiLiberiA++;
+
+	// ho garantito una condizione necessaria per i lavaggi totali e parziali
+	// verifica ancora di tutte le condizioni di sincronizzazione
+	if (postiLiberiTotale != 0 && richiesteTotale > 0)
+	    attesaTotale.cSignal();
+	if (richiesteA > 0)
+	    attesaA.cSignal();
+
+	// sono a posto altrimenti (condizioni iniziali)
+	lavaggio.mExit();
+	return;
+    }
+
+    public abstract void pagaTotale()
+    {
+	lavaggio.mEnter();
+
+	// uscendo dalla zona B libero un posto per il lavaggio totale
+	// garantendo una condizione necessaria per i lavaggi P&T
+	postiLiberiTotale++;
+	// rivaluto le condizioni di sincronizzazione
+	if (postiLiberiA != 0 && richiesteTotale > 0)
+	    attesaB.cSignal();
+	// verifico le condizioni per i parziali
+	if (postiLiberiA != 0 && richiesteA > 0)
+	    attesaA.cSignal();
+
+	// altrimenti sono nelle condizioni iniziali
+	lavaggio.mExit();
+	return;
+    }
+
+}
