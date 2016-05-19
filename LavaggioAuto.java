@@ -232,7 +232,7 @@ public class LavaggioAutoHor
 	if (richiesteA > 0)
 	    attesaA.cSignal();
 
-	// altrimenti sono a posto
+	// altrimenti sono a posto C.I.
 	lavaggio.mExit();
 	return;
     }
@@ -306,4 +306,4 @@ public class LavaggioAutoHor
 	return;
     }
 
-}
+} // LavaggioAutoHor
